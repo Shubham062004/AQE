@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   dashboardBtn?.addEventListener('click', () => {
-    chrome.tabs.create({url: 'http://localhost:3000'});
+    chrome.tabs.create({url: 'https://aqe.onrender.com'});
     window.close();
   });
 });

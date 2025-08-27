@@ -11,7 +11,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
+    "https://aqe.onrender.com/*",
     "https://*/*",
     "http://*/*"
   ],
