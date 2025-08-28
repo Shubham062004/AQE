@@ -26,8 +26,69 @@ function createFloatingPopup() {
   document.body.appendChild(popup);
   popupVisible = true;
   
+  // Make popup draggable
+  makeDraggable(popup);
+  
   attachEventListeners();
   updateAnswer('Ready');
+}
+
+// Draggable functionality
+function makeDraggable(element) {
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  
+  element.onmousedown = dragMouseDown;
+
+  function dragMouseDown(e) {
+    e = e || window.event;
+    
+    // Only allow dragging if clicking on the popup background (not buttons)
+    if (e.target.tagName === 'BUTTON' || e.target.className.includes('mini-btn')) {
+      return;
+    }
+    
+    e.preventDefault();
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
+    
+    // Change cursor to indicate dragging
+    element.style.cursor = 'grabbing';
+  }
+
+  function elementDrag(e) {
+    e = e || window.event;
+    e.preventDefault();
+    
+    // Calculate new cursor position
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    
+    // Calculate new position
+    let newTop = element.offsetTop - pos2;
+    let newLeft = element.offsetLeft - pos1;
+    
+    // Keep popup within viewport bounds
+    const maxTop = window.innerHeight - element.offsetHeight;
+    const maxLeft = window.innerWidth - element.offsetWidth;
+    
+    newTop = Math.max(0, Math.min(newTop, maxTop));
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    
+    // Set new position
+    element.style.top = newTop + 'px';
+    element.style.left = newLeft + 'px';
+    element.style.right = 'auto'; // Remove right positioning
+  }
+
+  function closeDragElement() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+    element.style.cursor = 'grab';
+  }
 }
 
 function attachEventListeners() {
@@ -37,28 +98,32 @@ function attachEventListeners() {
   const closeBtn = document.getElementById('close-btn');
   
   if (startBtn) {
-    startBtn.addEventListener('click', () => {
+    startBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent drag when clicking button
       console.log('Start clicked');
       updateAnswer('Ready for screenshot');
     });
   }
   
   if (screenshotBtn) {
-    screenshotBtn.addEventListener('click', () => {
+    screenshotBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       console.log('Screenshot clicked');
       handleScreenshot();
     });
   }
   
   if (testBtn) {
-    testBtn.addEventListener('click', () => {
+    testBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       console.log('Test clicked');
       handleTest();
     });
   }
   
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       console.log('Close clicked');
       hidePopup();
     });
@@ -156,8 +221,11 @@ async function handleTest() {
 async function sendMessageToBackground(action, data = {}) {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({action, ...data}, (response) => {
-      if (chrome.runtime.lastError) resolve({success: false, error: chrome.runtime.lastError.message});
-      else resolve(response || {success: false, error: 'No response'});
+      if (chrome.runtime.lastError) {
+        resolve({success: false, error: chrome.runtime.lastError.message});
+      } else {
+        resolve(response || {success: false, error: 'No response'});
+      }
     });
   });
 }
