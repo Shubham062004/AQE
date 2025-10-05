@@ -1,7 +1,7 @@
 console.log('Background script loaded');
 
 // REPLACE WITH YOUR ACTUAL GEMINI API KEY FROM https://aistudio.google.com/
-const GEMINI_API_KEY = 'AIzaSyAflVg0RPeRR84gLhGmrDMljkbnv-FoAqQ';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
