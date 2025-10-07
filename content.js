@@ -1,264 +1,174 @@
 console.log('Content script loaded');
-
 let popupVisible = false;
 let isProcessing = false;
 
 function createFloatingPopup() {
-  console.log('Creating minimal popup');
-  
-  const existingPopup = document.getElementById('ai-extractor-popup');
-  if (existingPopup) {
-    existingPopup.remove();
-  }
-
-  const popup = document.createElement('div');
-  popup.id = 'ai-extractor-popup';
-  popup.innerHTML = `
-    <div class="answer-area" id="answer-area">Loading...</div>
-    <div class="button-grid">
-      <button id="start-btn" class="mini-btn">Start</button>
-      <button id="screenshot-btn" class="mini-btn">Screenshot</button>
-      <button id="test-btn" class="mini-btn">Test</button>
-      <button id="close-btn" class="mini-btn close-btn">Close</button>
-    </div>
-  `;
-
-  document.body.appendChild(popup);
-  popupVisible = true;
-  
-  // Make popup draggable
-  makeDraggable(popup);
-  
-  attachEventListeners();
-  updateAnswer('Ready');
-}
-
-// Draggable functionality
-function makeDraggable(element) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  
-  element.onmousedown = dragMouseDown;
-
-  function dragMouseDown(e) {
-    e = e || window.event;
+    console.log('Creating minimal popup');
     
-    // Only allow dragging if clicking on the popup background (not buttons)
-    if (e.target.tagName === 'BUTTON' || e.target.className.includes('mini-btn')) {
-      return;
+    // Remove existing popup if any
+    const existingPopup = document.getElementById('ai-extractor-popup');
+    if (existingPopup) {
+        existingPopup.remove();
     }
-    
-    e.preventDefault();
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    document.onmouseup = closeDragElement;
-    document.onmousemove = elementDrag;
-    
-    // Change cursor to indicate dragging
-    element.style.cursor = 'grabbing';
-  }
 
-  function elementDrag(e) {
-    e = e || window.event;
-    e.preventDefault();
-    
-    // Calculate new cursor position
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    
-    // Calculate new position
-    let newTop = element.offsetTop - pos2;
-    let newLeft = element.offsetLeft - pos1;
-    
-    // Keep popup within viewport bounds
-    const maxTop = window.innerHeight - element.offsetHeight;
-    const maxLeft = window.innerWidth - element.offsetWidth;
-    
-    newTop = Math.max(0, Math.min(newTop, maxTop));
-    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-    
-    // Set new position
-    element.style.top = newTop + 'px';
-    element.style.left = newLeft + 'px';
-    element.style.right = 'auto'; // Remove right positioning
-  }
+    // Create main popup container
+    const popup = document.createElement('div');
+    popup.id = 'ai-extractor-popup';
 
-  function closeDragElement() {
-    document.onmouseup = null;
-    document.onmousemove = null;
-    element.style.cursor = 'grab';
-  }
-}
+    // Add popup content
+    popup.innerHTML = `
+        <div class="answer-area">Click Start to begin extraction</div>
+        <div class="button-grid">
+            <button class="mini-btn" id="start-btn">📸 Start</button>
+            <button class="mini-btn" id="settings-btn">⚙️ Settings</button>
+            <button class="mini-btn" id="history-btn">📋 History</button>
+            <button class="mini-btn" id="help-btn">❓ Help</button>
+            <button class="mini-btn close-btn" id="close-btn">❌ Close</button>
+        </div>
+    `;
 
-function attachEventListeners() {
-  const startBtn = document.getElementById('start-btn');
-  const screenshotBtn = document.getElementById('screenshot-btn');
-  const testBtn = document.getElementById('test-btn');
-  const closeBtn = document.getElementById('close-btn');
-  
-  if (startBtn) {
-    startBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent drag when clicking button
-      console.log('Start clicked');
-      updateAnswer('Ready for screenshot');
-    });
-  }
-  
-  if (screenshotBtn) {
-    screenshotBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log('Screenshot clicked');
-      handleScreenshot();
-    });
-  }
-  
-  if (testBtn) {
-    testBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log('Test clicked');
-      handleTest();
-    });
-  }
-  
-  if (closeBtn) {
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      console.log('Close clicked');
-      hidePopup();
-    });
-  }
-}
+    document.body.appendChild(popup);
 
-function showPopup() {
-  if (!popupVisible) {
-    createFloatingPopup();
-  } else {
-    const popup = document.getElementById('ai-extractor-popup');
-    if (popup) {
-      popup.style.display = 'block';
+    // Make popup draggable
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    popup.addEventListener("mousedown", dragStart);
+    document.addEventListener("mousemove", dragMove);
+    document.addEventListener("mouseup", dragEnd);
+
+    function dragStart(e) {
+        if (e.target.closest('.mini-btn')) return;
+        
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+
+        if (e.target === popup || popup.contains(e.target)) {
+            isDragging = true;
+        }
     }
-  }
-}
 
-function hidePopup() {
-  const popup = document.getElementById('ai-extractor-popup');
-  if (popup) {
-    popup.style.display = 'none';
-    popupVisible = false;
-  }
-}
+    function dragMove(e) {
+        if (isDragging) {
+            e.preventDefault();
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
 
-function updateAnswer(text) {
-  const answerArea = document.getElementById('answer-area');
-  if (answerArea) {
-    answerArea.textContent = text;
-  }
-}
+            xOffset = currentX;
+            yOffset = currentY;
 
-async function handleScreenshot() {
-  if (isProcessing) return;
-  isProcessing = true;
-  
-  try {
-    updateAnswer('Capturing...');
-    
-    const screenshotResult = await sendMessageToBackground('takeScreenshot');
-    if (!screenshotResult.success) {
-      throw new Error(screenshotResult.error);
+            popup.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        }
     }
-    
-    updateAnswer('Processing...');
-    
-    const aiResult = await sendMessageToBackground('processWithGemini', {
-      imageData: screenshotResult.dataUrl
+
+    function dragEnd(e) {
+        initialX = currentX;
+        initialY = currentY;
+        isDragging = false;
+    }
+
+    // Button handlers
+    const startBtn = popup.querySelector('#start-btn');
+    const settingsBtn = popup.querySelector('#settings-btn');
+    const historyBtn = popup.querySelector('#history-btn');
+    const helpBtn = popup.querySelector('#help-btn');
+    const closeBtn = popup.querySelector('#close-btn');
+    const answerArea = popup.querySelector('.answer-area');
+
+    startBtn.addEventListener('click', async () => {
+        console.log('Start clicked');
+        if (isProcessing) return;
+        
+        isProcessing = true;
+        startBtn.textContent = '⏳ Processing...';
+        answerArea.textContent = 'Taking screenshot...';
+
+        try {
+            console.log('Screenshot clicked');
+            
+            // Take screenshot
+            console.log('Sending screenshot request to background');
+            const screenshotResult = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({action: 'takeScreenshot'}, (response) => {
+                    console.log('Screenshot response:', response);
+                    resolve(response);
+                });
+            });
+
+            if (!screenshotResult.success) {
+                throw new Error(screenshotResult.error);
+            }
+
+            answerArea.textContent = 'Processing with AI...';
+            
+            // Process with Gemini
+            const geminiResult = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    action: 'processWithGemini', 
+                    imageData: screenshotResult.dataUrl
+                }, resolve);
+            });
+
+            if (!geminiResult.success) {
+                throw new Error(geminiResult.error);
+            }
+
+            // Display results
+            const data = geminiResult.data;
+            answerArea.innerHTML = `
+                <strong>Q:</strong> ${data.question}<br><br>
+                <strong>Options:</strong><br>${data.options.join('<br>')}<br><br>
+                <strong style="color: #4CAF50;">Answer: ${data.correct_option}</strong>
+            `;
+
+        } catch (error) {
+            console.log('Processing error:', error);
+            answerArea.textContent = `Error: ${error.message}`;
+        } finally {
+            isProcessing = false;
+            startBtn.textContent = '📸 Start';
+        }
     });
-    
-    if (!aiResult.success) {
-      throw new Error(aiResult.error);
-    }
-    
-    // Extract clean answer text
-    let answerText = 'No answer found';
-    if (aiResult.data && aiResult.data.correct_option) {
-      const option = aiResult.data.correct_option;
-      const match = option.match(/^[A-D]\)\s*(.+)$/);
-      if (match) {
-        answerText = match[1];
-      } else {
-        answerText = option;
-      }
-    }
-    
-    updateAnswer('Saving...');
-    await sendToServer(aiResult.data, screenshotResult.dataUrl);
-    
-    updateAnswer(`Answer: ${answerText}`);
-    
-  } catch (error) {
-    console.error('Screenshot failed:', error);
-    updateAnswer('Error occurred');
-  } finally {
-    isProcessing = false;
-  }
-}
 
-async function handleTest() {
-  try {
-    updateAnswer('Testing...');
-    const result = await sendMessageToBackground('testServer');
-    
-    if (result.success) {
-      updateAnswer('Answer: 4');
-    } else {
-      updateAnswer('Test failed');
-    }
-  } catch (error) {
-    updateAnswer('Test error');
-  }
-}
-
-async function sendMessageToBackground(action, data = {}) {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({action, ...data}, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve({success: false, error: chrome.runtime.lastError.message});
-      } else {
-        resolve(response || {success: false, error: 'No response'});
-      }
+    closeBtn.addEventListener('click', () => {
+        popup.remove();
+        popupVisible = false;
     });
-  });
-}
 
-async function sendToServer(questionData, screenshotUrl) {
-  try {
-    const payload = {
-      ...questionData,
-      screenshot_url: screenshotUrl,
-      timestamp: new Date().toISOString()
-    };
-    
-    const response = await fetch('https://aqe.onrender.com/submit', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
+    settingsBtn.addEventListener('click', () => {
+        answerArea.textContent = 'Settings: Configure your preferences here';
     });
-    
-    if (!response.ok) {
-      throw new Error('Server error');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    throw error;
-  }
+
+    historyBtn.addEventListener('click', () => {
+        answerArea.textContent = 'History: View previous extractions';
+    });
+
+    helpBtn.addEventListener('click', () => {
+        answerArea.textContent = 'Help: 1) Click Start 2) Extension captures screen 3) AI extracts question';
+    });
+
+    popupVisible = true;
 }
 
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'showPopup') {
-    showPopup();
-    sendResponse({success: true});
-  }
-  return true;
+    console.log('Content script received:', request.action);
+    
+    if (request.action === 'showPopup') {
+        if (!popupVisible) {
+            createFloatingPopup();
+            sendResponse({success: true});
+        } else {
+            sendResponse({success: false, message: 'Popup already visible'});
+        }
+    }
+    
+    return true;
 });
 
+console.log('Content script ready');
