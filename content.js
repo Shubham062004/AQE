@@ -119,10 +119,14 @@ function createFloatingPopup() {
             }
 
             // Display results
+            // const data = geminiResult.data;
+            // answerArea.innerHTML = `
+            //     <strong>Q:</strong> ${data.question}<br><br>
+            //     <strong>Options:</strong><br>${data.options.join('<br>')}<br><br>
+            //     <strong style="color: #4CAF50;">Answer: ${data.correct_option}</strong>
+            // `;
             const data = geminiResult.data;
             answerArea.innerHTML = `
-                <strong>Q:</strong> ${data.question}<br><br>
-                <strong>Options:</strong><br>${data.options.join('<br>')}<br><br>
                 <strong style="color: #4CAF50;">Answer: ${data.correct_option}</strong>
             `;
 

@@ -5,15 +5,12 @@
   "description": "Extract questions from screenshots using Gemini AI",
   "permissions": [
     "activeTab",
-    "tabs",
     "storage",
-    "clipboardWrite",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
-    "https://aqe.onrender.com/*",
-    "https://*/*",
-    "http://*/*"
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,17 +19,15 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["styles.css"],
-      "run_at": "document_idle"
+      "css": ["styles.css"]
     }
   ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "AI Question Extractor"
-  },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    "extension_pages": "script-src 'self'; object-src 'self'",
     "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self'"
+  },
+  "action": {
+    "default_popup": "popup.html"
   }
 }
 
